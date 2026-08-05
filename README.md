@@ -1,30 +1,37 @@
+# boutique-postgres
 
-# Boutique PostgreSQL
+Provides local PostgreSQL initialization and verification utilities.
 
-Shared local PostgreSQL infrastructure for the Boutique microservices platform.
+## Overview
 
-## Architecture
+- **Type:** Platform repository
+- **Stack:** Docker
 
-One PostgreSQL container serves multiple microservices.
+## Flow
 
-Each microservice owns a separate database:
+```text
+Client / service → Controller → Business logic → Database / events / downstream services
+```
 
-- Product Catalog Service: `product_catalog_db`
-- Inventory Service: `inventory_db`
+## Configuration
 
-Each microservice manages its own tables and Flyway migrations.
+```text
+BOUTIQUE_DATABASES
+CONTAINER_NAME
+ENV_FILE
+IMAGE_NAME
+NETWORK_NAME
+POSTGRES_DB
+POSTGRES_USER
+PROJECT_ROOT
+```
 
-## Important files
-
-- `.env`: real local values and secrets; never committed
-- `.env.example`: safe GitHub template
-- `Dockerfile`: creates the Boutique PostgreSQL image
-- `init/01-create-databases.sh`: creates missing databases
-- `scripts/start-postgres.sh`: builds and starts PostgreSQL
-- `scripts/stop-postgres.sh`: stops PostgreSQL without deleting data
-- `scripts/verify-postgres.sh`: checks health, network, volume and databases
-
-## Start
+## Docker
 
 ```bash
-./scripts/start-postgres.sh
+docker build -t boutique-postgres:local .
+```
+
+## CI/CD
+
+This repository is built and deployed independently through its own GitHub Actions workflow.
