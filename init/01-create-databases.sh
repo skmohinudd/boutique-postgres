@@ -1,63 +1,18 @@
 #!/usr/bin/env bash
-
 set -Eeuo pipefail
-
-echo "=============================================="
-echo "Boutique database provisioning started"
-echo "=============================================="
-
-if [[ -z "${POSTGRES_USER:-}" ]]; then
-    echo "ERROR: POSTGRES_USER is missing."
-    exit 1
-fi
-
-if [[ -z "${POSTGRES_DB:-}" ]]; then
-    echo "ERROR: POSTGRES_DB is missing."
-    exit 1
-fi
-
-if [[ -z "${BOUTIQUE_DATABASES:-}" ]]; then
-    echo "ERROR: BOUTIQUE_DATABASES is missing."
-    exit 1
-fi
-
-IFS=',' read -ra DATABASES <<< "${BOUTIQUE_DATABASES}"
-
-for raw_database in "${DATABASES[@]}"; do
-    database_name="$(echo "${raw_database}" | xargs)"
-
-    if [[ -z "${database_name}" ]]; then
-        continue
-    fi
-
-    if [[ ! "${database_name}" =~ ^[a-zA-Z][a-zA-Z0-9_]*$ ]]; then
-        echo "ERROR: Invalid database name: ${database_name}"
-        exit 1
-    fi
-
-    database_exists="$(
-        psql \
-            --username="${POSTGRES_USER}" \
-            --dbname="${POSTGRES_DB}" \
-            --tuples-only \
-            --no-align \
-            --command="SELECT 1 FROM pg_database WHERE datname='${database_name}';"
-    )"
-
-    if [[ "${database_exists}" == "1" ]]; then
-        echo "Database already exists: ${database_name}"
-    else
-        echo "Creating database: ${database_name}"
-
-        createdb \
-            --username="${POSTGRES_USER}" \
-            --owner="${POSTGRES_USER}" \
-            "${database_name}"
-
-        echo "Database created: ${database_name}"
-    fi
+: "${POSTGRES_USER:?POSTGRES_USER is required}"
+: "${POSTGRES_DB:?POSTGRES_DB is required}"
+: "${BOUTIQUE_DATABASES:?BOUTIQUE_DATABASES is required}"
+IFS=',' read -ra databases <<< "$BOUTIQUE_DATABASES"
+for raw in "${databases[@]}"; do
+  db="$(printf '%s' "$raw" | xargs)"
+  [[ -n "$db" ]] || continue
+  [[ "$db" =~ ^[A-Za-z][A-Za-z0-9_]*$ ]] || { echo "Invalid database name: $db" >&2; exit 1; }
+  exists="$(psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -tAc "SELECT 1 FROM pg_database WHERE datname='$db'")"
+  if [[ "$exists" == "1" ]]; then
+    echo "Database already exists: $db"
+  else
+    createdb -U "$POSTGRES_USER" -O "$POSTGRES_USER" "$db"
+    echo "Database created: $db"
+  fi
 done
-
-echo "=============================================="
-echo "Boutique database provisioning completed"
-echo "=============================================="
